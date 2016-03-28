@@ -1,0 +1,13 @@
+Usage: brightness [-h] [-b] [-m] [-i] [-d]
+	-h	Print this message.
+	-b	Get current brightness
+	-m	Get maximum brightness
+	-i	Increase brightness
+	-d	Decrease brightness
+
+Increase or decrease the backlight brightness. The amount of change depends on 
+the current brightness level, and is derived from Fechner's scale.
+Set the $brightness and $max_brightness variables in the script as appropriate.
+This scipt requires root access. To avoid a password prompt, you can append 
+'ALL ALL=(ALL) NOPASSWD: /path/to/brightness' to your sudoers file. 
+Use this script at your own risk.

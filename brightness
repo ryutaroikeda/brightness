@@ -1,0 +1,102 @@
+#!/bin/bash
+# Configuration files
+brightness=/sys/class/backlight/intel_backlight/brightness
+max_brightness=/sys/class/backlight/intel_backlight/max_brightness
+
+scriptName=$(basename "$0")
+
+function usage {
+	cat << EOF
+Usage: $scriptName [-h] [-b] [-m] [-i] [-d]
+	-h	Print this message.
+	-b	Get current brightness
+	-m	Get maximum brightness
+	-i	Increase brightness
+	-d	Decrease brightness
+
+Increase or decrease the backlight brightness. The amount of change depends on 
+the current brightness level, and is derived from Fechner's scale.
+Set the \$brightness and \$max_brightness variables in the script as appropriate.
+This scipt requires root access. To avoid a password prompt, you can append 
+'ALL ALL=(ALL) NOPASSWD: /path/to/brightness' to your sudoers file. 
+Use this script at your own risk.
+EOF
+}
+
+function setLuminance {
+	local luminance=$1
+	sudo echo $luminance > $brightness
+}
+
+# Convert luminance to an integer on a log scale
+function toFechner {
+	local luminance=$1
+	local maxLuminance=$2
+	local maxFechner=$3
+	local r=$(bc -l <<< "$maxFechner*l($luminance)/l($maxLuminance)")
+	printf "%.0f\n" $r
+}
+
+# Convert Fechner scale to luminance
+function toLuminance {
+	local scale=$1
+	local maxFechner=$2
+	local maxLuminance=$3
+	local r=$(bc -l <<< "e($scale*l($maxLuminance)/$maxFechner)")
+	printf "%.0f\n" $r
+}
+
+key="$1"
+case $key in
+-h|--help)
+	argHelp=1
+	;;
+-b|--brightness)
+	argBrightness=1
+	;;
+-m|--max-brightness)
+	argMaxBrightness=1
+	;;
+-i|--increase)
+	argIncrease=1
+	;;
+-d|--decrease)
+	argDecrease=1
+	;;
+	*) # default
+	;;
+esac
+
+if [[ -n $argHelp ]]; then
+	usage
+	exit
+fi
+
+lum=$(cat $brightness)
+maxLum=$(cat $max_brightness)
+maxFechner=20
+fechner=$(toFechner $lum $maxLum $maxFechner)
+
+if [[ -n $argBrightness ]]; then
+	echo $lum
+	exit
+fi
+
+if [[ -n $argMaxBrightness ]]; then
+	echo $maxLum
+	exit
+fi
+
+if [[ -n $argIncrease ]]; then
+	if [ $fechner -lt $maxFechner ]; then
+		fechner=$(($fechner + 1))
+	fi
+fi
+
+if [[ -n $argDecrease ]]; then
+	if [ $fechner -gt 1 ]; then
+		fechner=$(($fechner - 1))
+	fi
+fi
+
+setLuminance $(toLuminance $fechner $maxFechner $maxLum)
