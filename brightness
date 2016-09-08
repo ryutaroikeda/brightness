@@ -1,4 +1,8 @@
 #!/bin/bash
+set -o errexit
+set -o nounset
+set -o pipefail
+
 # Configuration files
 brightness=/sys/class/backlight/intel_backlight/brightness
 max_brightness=/sys/class/backlight/intel_backlight/max_brightness
@@ -20,6 +24,7 @@ Set the \$brightness and \$max_brightness variables in the script as appropriate
 This scipt requires root access. To avoid a password prompt, you can append 
 'ALL ALL=(ALL) NOPASSWD: /path/to/brightness' to your sudoers file. 
 Use this script at your own risk.
+This script depends on bc.
 EOF
 }
 
@@ -46,7 +51,13 @@ function toLuminance {
 	printf "%.0f\n" $r
 }
 
-key="$1"
+argHelp=""
+argBrightness=""
+argMaxBrightness=""
+argIncrease=""
+argDecrease=""
+
+key=${1-}
 case $key in
 -h|--help)
 	argHelp=1
@@ -64,6 +75,7 @@ case $key in
 	argDecrease=1
 	;;
 	*) # default
+	argHelp=1
 	;;
 esac
 
@@ -75,6 +87,7 @@ fi
 lum=$(cat $brightness)
 maxLum=$(cat $max_brightness)
 maxFechner=20
+minFechner=6
 fechner=$(toFechner $lum $maxLum $maxFechner)
 
 if [[ -n $argBrightness ]]; then
@@ -94,7 +107,7 @@ if [[ -n $argIncrease ]]; then
 fi
 
 if [[ -n $argDecrease ]]; then
-	if [ $fechner -gt 1 ]; then
+	if [ $fechner -gt $minFechner ]; then
 		fechner=$(($fechner - 1))
 	fi
 fi
